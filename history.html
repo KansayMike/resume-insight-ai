@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis History - AI Resume Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-slate: #1e293b;
+            --soft-white: #fefefe;
+            --accent-blue: #3b82f6;
+            --success-green: #10b981;
+            --warning-amber: #f59e0b;
+            --neutral-gray: #64748b;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--deep-slate);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--success-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .history-card {
+            border-left: 4px solid var(--accent-blue);
+            cursor: pointer;
+        }
+        
+        .history-card.selected {
+            border-left-color: var(--success-green);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(59, 130, 246, 0.05));
+        }
+        
+        .score-badge {
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+        }
+        
+        .score-excellent {
+            background: rgba(16, 185, 129, 0.2);
+            color: #065f46;
+        }
+        
+        .score-good {
+            background: rgba(245, 158, 11, 0.2);
+            color: #92400e;
+        }
+        
+        .score-fair {
+            background: rgba(239, 68, 68, 0.2);
+            color: #991b1b;
+        }
+        
+        .comparison-mode {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+            border: 2px dashed var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold gradient-text">AI Resume Analyzer</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">Dashboard</a>
+                    <a href="results.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">Results</a>
+                    <a href="#" class="text-blue-600 font-medium">History</a>
+                    <button onclick="clearHistory()" class="bg-red-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-red-600 transition-all">
+                        Clear History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="py-12 bg-gradient-to-r from-blue-50 to-green-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold mb-4">Analysis History</h1>
+                <p class="text-xl text-gray-600">Track your resume optimization progress over time</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <section class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Controls -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="comparisonMode" class="w-5 h-5 text-blue-600 rounded">
+                        <label for="comparisonMode" class="font-medium text-gray-700">Comparison Mode</label>
+                    </div>
+                    <div id="selectedCount" class="text-sm text-gray-500 hidden">
+                        <span id="count">0</span> analyses selected
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="sortBy" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="date">Sort by Date</option>
+                        <option value="score">Sort by Score</option>
+                        <option value="job">Sort by Job Role</option>
+                    </select>
+                    <button id="compareBtn" onclick="compareSelected()" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Compare Selected
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Chart -->
+            <div class="card-hover bg-white rounded-2xl p-8 mb-8 border border-gray-200">
+                <h3 class="text-2xl font-bold mb-6">Improvement Over Time</h3>
+                <div id="progressChart" style="width: 100%; height: 400px;"></div>
+            </div>
+
+            <!-- History Grid -->
+            <div id="historyGrid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- History items will be populated by JavaScript -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="text-center py-16 hidden">
+                <svg class="w-24 h-24 mx-auto mb-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="text-2xl font-bold text-gray-600 mb-4">No Analysis History</h3>
+                <p class="text-gray-500 mb-8 max-w-md mx-auto">
+                    Start by analyzing your first resume to see your progress over time.
+                </p>
+                <a href="index.html" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    Analyze Resume
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Modal -->
+    <div id="comparisonModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-2xl max-w-6xl w-full max-h-screen overflow-y-auto">
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-3xl font-bold">Analysis Comparison</h2>
+                        <button onclick="closeComparison()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div id="comparisonContent">
+                        <!-- Comparison content will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold">AI Resume Analyzer</span>
+                </div>
+                <p class="text-gray-400 mb-4">Intelligent resume analysis powered by advanced AI technology</p>
+                <p class="text-sm text-gray-500">© 2024 AI Resume Analyzer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // History page functionality
+        class HistoryPage {
+            constructor() {
+                this.selectedItems = new Set();
+                this.comparisonMode = false;
+                this.historyData = [];
+                this.init();
+            }
+
+            init() {
+                this.loadHistoryData();
+                this.setupEventListeners();
+                this.updateDisplay();
+                this.initializeChart();
+                this.animateElements();
+            }
+
+            loadHistoryData() {
+                // Try to load from localStorage first
+                const stored = localStorage.getItem('analysisHistory');
+                if (stored) {
+                    this.historyData = JSON.parse(stored);
+                } else {
+                    // Generate sample data for demonstration
+                    this.historyData = this.generateSampleHistory();
+                    localStorage.setItem('analysisHistory', JSON.stringify(this.historyData));
+                }
+            }
+
+            generateSampleHistory() {
+                const jobRoles = ['Software Engineer', 'Data Scientist', 'Product Manager', 'UX Designer', 'Marketing Manager'];
+                const sampleData = [];
+                
+                for (let i = 0; i < 12; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i * 3);
+                    
+                    sampleData.push({
+                        id: Date.now() + i + '',
+                        fileName: `resume-v${12-i}.pdf`,
+                        jobRole: jobRoles[Math.floor(Math.random() * jobRoles.length)],
+                        scores: {
+                            overall: Math.floor(Math.random() * 30) + 65,
+                            skills: Math.floor(Math.random() * 35) + 60,
+                            experience: Math.floor(Math.random() * 25) + 70,
+                            education: Math.floor(Math.random() * 20) + 75,
+                            keywords: Math.floor(Math.random() * 40) + 55
+                        },
+                        timestamp: date.toISOString(),
+                        matchedSkills: ['JavaScript', 'React', 'Node.js', 'SQL', 'Git'],
+                        missingSkills: ['Docker', 'AWS', 'TypeScript'],
+                        recommendations: [
+                            'Add more quantifiable achievements',
+                            'Include Docker and AWS skills',
+                            'Optimize summary section'
+                        ]
+                    });
+                }
+                
+                return sampleData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            }
+
+            setupEventListeners() {
+                document.getElementById('comparisonMode').addEventListener('change', (e) => {
+                    this.toggleComparisonMode(e.target.checked);
+                });
+
+                document.getElementById('sortBy').addEventListener('change', (e) => {
+                    this.sortHistory(e.target.value);
+                });
+            }
+
+            updateDisplay() {
+                if (this.historyData.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                    document.getElementById('historyGrid').classList.add('hidden');
+                    return;
+                }
+
+                this.renderHistoryGrid();
+            }
+
+            renderHistoryGrid() {
+                const grid = document.getElementById('historyGrid');
+                grid.innerHTML = '';
+
+                this.historyData.forEach(item => {
+                    const card = this.createHistoryCard(item);
+                    grid.appendChild(card);
+                });
+            }
+
+            createHistoryCard(item) {
+                const card = document.createElement('div');
+                card.className = `history-card bg-white rounded-2xl p-6 border border-gray-200 card-hover`;
+                card.dataset.id = item.id;
+
+                const scoreClass = item.scores.overall >= 80 ? 'score-excellent' : 
+                                 item.scores.overall >= 60 ? 'score-good' : 'score-fair';
+
+                const date = new Date(item.timestamp).toLocaleDateString();
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg mb-1">${item.jobRole}</h3>
+                            <p class="text-sm text-gray-500">${item.fileName}</p>
+                        </div>
+                        ${this.comparisonMode ? `
+                            <input type="checkbox" class="comparison-checkbox w-5 h-5 text-blue-600 rounded" 
+                                   onchange="historyPage.toggleSelection('${item.id}')" 
+                                   ${this.selectedItems.has(item.id) ? 'checked' : ''}>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Overall Score</span>
+                            <span class="score-badge ${scoreClass}">${item.scores.overall}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full" 
+                                 style="width: ${item.scores.overval}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+                        <div>
+                            <span class="text-gray-500">Skills:</span>
+                            <span class="font-medium">${item.scores.skills}%</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Experience:</span>
+                            <span class="font-medium">${item.scores.experience}%</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-sm text-gray-500">
+                        <span>${date}</span>
+                        <button onclick="historyPage.viewAnalysis('${item.id}')" 
+                                class="text-blue-600 hover:text-blue-800 font-medium">
+                            View Details →
+                        </button>
+                    </div>
+                `;
+
+                if (!this.comparisonMode) {
+                    card.addEventListener('click', (e) => {
+                        if (e.target.type !== 'checkbox') {
+                            this.viewAnalysis(item.id);
+                        }
+                    });
+                }
+
+                return card;
+            }
+
+            toggleComparisonMode(enabled) {
+                this.comparisonMode = enabled;
+                this.selectedItems.clear();
+                
+                const selectedCount = document.getElementById('selectedCount');
+                const compareBtn = document.getElementById('compareBtn');
+                
+                if (enabled) {
+                    selectedCount.classList.remove('hidden');
+                    compareBtn.disabled = false;
+                } else {
+                    selectedCount.classList.add('hidden');
+                    compareBtn.disabled = true;
+                }
+                
+                this.updateSelectedCount();
+                this.renderHistoryGrid();
+            }
+
+            toggleSelection(id) {
+                if (this.selectedItems.has(id)) {
+                    this.selectedItems.delete(id);
+                } else {
+                    this.selectedItems.add(id);
+                }
+                
+                this.updateSelectedCount();
+                
+                const compareBtn = document.getElementById('compareBtn');
+                compareBtn.disabled = this.selectedItems.size < 2;
+            }
+
+            updateSelectedCount() {
+                document.getElementById('count').textContent = this.selectedItems.size;
+            }
+
+            sortHistory(criteria) {
+                switch (criteria) {
+                    case 'date':
+                        this.historyData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        break;
+                    case 'score':
+                        this.historyData.sort((a, b) => b.scores.overall - a.scores.overall);
+                        break;
+                    case 'job':
+                        this.historyData.sort((a, b) => a.jobRole.localeCompare(b.jobRole));
+                        break;
+                }
+                
+                this.renderHistoryGrid();
+            }
+
+            initializeChart() {
+                const chart = echarts.init(document.getElementById('progressChart'));
+                
+                // Prepare data for the chart
+                const chartData = this.historyData.slice(0, 10).reverse(); // Last 10 analyses
+                const dates = chartData.map(item => new Date(item.timestamp).toLocaleDateString());
+                const scores = chartData.map(item => item.scores.overall);
+                
+                const option = {
+                    title: {
+                        text: 'Resume Analysis Progress',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function(params) {
+                            return `${params[0].name}<br/>Overall Score: ${params[0].value}%`;
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: dates,
+                        axisLabel: {
+                            rotate: 45
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        min: 0,
+                        max: 100,
+                        axisLabel: {
+                            formatter: '{value}%'
+                        }
+                    },
+                    series: [{
+                        data: scores,
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: {
+                            color: '#3b82f6',
+                            width: 3
+                        },
+                        itemStyle: {
+                            color: '#3b82f6'
+                        },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 0,
+                                y2: 1,
+                                colorStops: [{
+                                    offset: 0, color: 'rgba(59, 130, 246, 0.3)'
+                                }, {
+                                    offset: 1, color: 'rgba(59, 130, 246, 0.1)'
+                                }]
+                            }
+                        }
+                    }]
+                };
+
+                chart.setOption(option);
+                
+                window.addEventListener('resize', () => {
+                    chart.resize();
+                });
+            }
+
+            animateElements() {
+                anime({
+                    targets: '.card-hover',
+                    translateY: [50, 0],
+                    opacity: [0, 1],
+                    delay: anime.stagger(100),
+                    duration: 600,
+                    easing: 'easeOutExpo'
+                });
+            }
+
+            viewAnalysis(id) {
+                const analysis = this.historyData.find(item => item.id === id);
+                if (analysis) {
+                    localStorage.setItem('analysisData', JSON.stringify(analysis));
+                    window.location.href = 'results.html';
+                }
+            }
+
+            compareSelected() {
+                if (this.selectedItems.size < 2) return;
+                
+                const selectedAnalyses = this.historyData.filter(item => 
+                    this.selectedItems.has(item.id)
+                );
+                
+                this.showComparison(selectedAnalyses);
+            }
+
+            showComparison(analyses) {
+                const modal = document.getElementById('comparisonModal');
+                const content = document.getElementById('comparisonContent');
+                
+                content.innerHTML = this.generateComparisonContent(analyses);
+                modal.classList.remove('hidden');
+                
+                // Animate modal
+                anime({
+                    targets: modal.querySelector('.bg-white'),
+                    scale: [0.8, 1],
+                    opacity: [0, 1],
+                    duration: 300,
+                    easing: 'easeOutBack'
+                });
+            }
+
+            generateComparisonContent(analyses) {
+                let html = '<div class="grid gap-8">';
+                
+                // Overall scores comparison
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Overall Scores Comparison</h3>
+                        <div class="grid grid-cols-${analyses.length} gap-4">
+                `;
+                
+                analyses.forEach(analysis => {
+                    html += `
+                        <div class="text-center">
+                            <div class="text-3xl font-bold gradient-text mb-2">${analysis.scores.overall}%</div>
+                            <div class="text-sm text-gray-600">${analysis.jobRole}</div>
+                            <div class="text-xs text-gray-500">${new Date(analysis.timestamp).toLocaleDateString()}</div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+                
+                // Detailed scores comparison
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Detailed Scores</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b">
+                                        <th class="text-left py-2">Category</th>
+                `;
+                
+                analyses.forEach(analysis => {
+                    html += `<th class="text-center py-2">${analysis.jobRole}</th>`;
+                });
+                
+                html += '</tr></thead><tbody>';
+                
+                const categories = ['skills', 'experience', 'education', 'keywords'];
+                categories.forEach(category => {
+                    html += `<tr class="border-b"><td class="py-2 font-medium capitalize">${category}</td>`;
+                    analyses.forEach(analysis => {
+                        html += `<td class="text-center py-2">${analysis.scores[category]}%</td>`;
+                    });
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table></div></div>';
+                
+                // Skills comparison
+                html += `
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Skills Comparison</h3>
+                        <div class="grid grid-cols-${analyses.length} gap-6">
+                `;
+                
+                analyses.forEach(analysis => {
+                    html += `
+                        <div>
+                            <h4 class="font-medium mb-2">${analysis.jobRole}</h4>
+                            <div class="space-y-1 text-sm">
+                                <div><span class="text-green-600">✓</span> ${analysis.matchedSkills.slice(0, 3).join(', ')}</div>
+                                <div><span class="text-amber-600">!</span> ${analysis.missingSkills.slice(0, 2).join(', ')}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div></div>';
+                
+                return html;
+            }
+
+            closeComparison() {
+                const modal = document.getElementById('comparisonModal');
+                modal.classList.add('hidden');
+            }
+
+            clearHistory() {
+                if (confirm('Are you sure you want to clear all history? This cannot be undone.')) {
+                    localStorage.removeItem('analysisHistory');
+                    this.historyData = [];
+                    this.updateDisplay();
+                }
+            }
+        }
+
+        // Global functions
+        function compareSelected() {
+            window.historyPage.compareSelected();
+        }
+
+        function closeComparison() {
+            window.historyPage.closeComparison();
+        }
+
+        function clearHistory() {
+            window.historyPage.clearHistory();
+        }
+
+        // Initialize history page
+        document.addEventListener('DOMContentLoaded', () => {
+            window.historyPage = new HistoryPage();
+        });
+    </script>
+</body>
+</html>

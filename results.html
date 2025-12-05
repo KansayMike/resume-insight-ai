@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - AI Resume Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-slate: #1e293b;
+            --soft-white: #fefefe;
+            --accent-blue: #3b82f6;
+            --success-green: #10b981;
+            --warning-amber: #f59e0b;
+            --neutral-gray: #64748b;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--deep-slate);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--success-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .score-circle {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        
+        .score-circle svg {
+            transform: rotate(-90deg);
+        }
+        
+        .score-circle .progress-ring {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+        }
+        
+        .score-circle .progress-bg {
+            stroke: #e5e7eb;
+        }
+        
+        .score-circle .progress-fill {
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 565.48;
+            transition: stroke-dashoffset 2s ease-in-out;
+        }
+        
+        .skill-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .skill-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1.5s ease-out;
+        }
+        
+        .recommendation-card {
+            border-left: 4px solid var(--accent-blue);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(16, 185, 129, 0.05));
+        }
+        
+        .matched-skill {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.2));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .missing-skill {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold gradient-text">AI Resume Analyzer</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">Dashboard</a>
+                    <a href="#" class="text-blue-600 font-medium">Results</a>
+                    <a href="history.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">History</a>
+                    <button onclick="exportResults()" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                        Export Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="py-12 bg-gradient-to-r from-blue-50 to-green-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold mb-4">Analysis Results</h1>
+                <p class="text-xl text-gray-600">Comprehensive resume analysis for <span id="jobRoleDisplay" class="font-bold text-blue-600">Software Engineer</span> position</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Results -->
+    <section class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Overall Score -->
+            <div class="card-hover bg-white rounded-2xl p-8 mb-8 border border-gray-200 text-center">
+                <h2 class="text-2xl font-bold mb-8">Overall Match Score</h2>
+                <div class="flex justify-center mb-8">
+                    <div class="score-circle">
+                        <svg width="200" height="200">
+                            <circle class="progress-ring progress-bg" cx="100" cy="100" r="90"></circle>
+                            <circle id="scoreCircle" class="progress-ring progress-fill" cx="100" cy="100" r="90" stroke="#3b82f6"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <div id="overallScore" class="text-5xl font-bold gradient-text">87</div>
+                                <div class="text-lg text-gray-600">% Match</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="scoreLabel" class="text-xl font-semibold text-green-600 mb-2">Excellent Match</div>
+                <p class="text-gray-600 max-w-2xl mx-auto">
+                    Your resume shows strong alignment with the target role requirements. 
+                    With some minor optimizations, you'll have an excellent chance of passing ATS screening.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8 mb-8">
+                <!-- Skills Analysis -->
+                <div class="lg:col-span-2">
+                    <div class="card-hover bg-white rounded-2xl p-8 border border-gray-200 mb-8">
+                        <h3 class="text-2xl font-bold mb-6">Skills Breakdown</h3>
+                        <div id="skillsChart" style="width: 100%; height: 400px;"></div>
+                    </div>
+
+                    <!-- Detailed Scores -->
+                    <div class="card-hover bg-white rounded-2xl p-8 border border-gray-200">
+                        <h3 class="text-2xl font-bold mb-6">Detailed Analysis</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Skills Match</span>
+                                    <span id="skillsScore" class="font-bold text-blue-600">85%</span>
+                                </div>
+                                <div class="skill-bar">
+                                    <div id="skillsBar" class="skill-fill bg-blue-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Experience Relevance</span>
+                                    <span id="experienceScore" class="font-bold text-green-600">92%</span>
+                                </div>
+                                <div class="skill-bar">
+                                    <div id="experienceBar" class="skill-fill bg-green-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Education Alignment</span>
+                                    <span id="educationScore" class="font-bold text-blue-600">78%</span>
+                                </div>
+                                <div class="skill-bar">
+                                    <div id="educationBar" class="skill-fill bg-blue-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="font-medium">Keyword Optimization</span>
+                                    <span id="keywordsScore" class="font-bold text-amber-600">65%</span>
+                                </div>
+                                <div class="skill-bar">
+                                    <div id="keywordsBar" class="skill-fill bg-amber-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skills Tags -->
+                <div class="space-y-8">
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-xl font-bold mb-4">Matched Skills</h3>
+                        <div id="matchedSkills" class="flex flex-wrap gap-2 mb-6">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">9 skills</span> matched with job requirements
+                        </div>
+                    </div>
+
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-xl font-bold mb-4">Missing Skills</h3>
+                        <div id="missingSkills" class="flex flex-wrap gap-2 mb-6">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">5 skills</span> to consider adding
+                        </div>
+                    </div>
+
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-xl font-bold mb-4">Quick Stats</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">File Analyzed</span>
+                                <span id="fileName" class="font-medium">resume.pdf</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Analysis Time</span>
+                                <span class="font-medium">6.2s</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">ATS Compatibility</span>
+                                <span class="font-medium text-green-600">High</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Word Count</span>
+                                <span class="font-medium">487</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="card-hover bg-white rounded-2xl p-8 border border-gray-200 mb-8">
+                <h3 class="text-2xl font-bold mb-6 flex items-center">
+                    <svg class="w-6 h-6 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                    AI Recommendations
+                </h3>
+                <div id="recommendations" class="space-y-4">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center space-x-4">
+                <button onclick="optimizeResume()" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105">
+                    Optimize Resume
+                </button>
+                <button onclick="analyzeAnother()" class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-bold text-lg hover:border-blue-500 hover:text-blue-600 transition-all">
+                    Analyze Another
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold">AI Resume Analyzer</span>
+                </div>
+                <p class="text-gray-400 mb-4">Intelligent resume analysis powered by advanced AI technology</p>
+                <p class="text-sm text-gray-500">© 2024 AI Resume Analyzer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Results page functionality
+        class ResultsPage {
+            constructor() {
+                this.analysisData = null;
+                this.init();
+            }
+
+            init() {
+                this.loadAnalysisData();
+                this.updateDisplay();
+                this.initializeCharts();
+                this.animateElements();
+            }
+
+            loadAnalysisData() {
+                const stored = localStorage.getItem('analysisData');
+                if (stored) {
+                    this.analysisData = JSON.parse(stored);
+                } else {
+                    // Generate sample data if none exists
+                    this.analysisData = this.generateSampleData();
+                }
+            }
+
+            generateSampleData() {
+                return {
+                    fileName: 'sample-resume.pdf',
+                    jobRole: 'Software Engineer',
+                    scores: {
+                        overall: 87,
+                        skills: 85,
+                        experience: 92,
+                        education: 78,
+                        keywords: 65
+                    },
+                    matchedSkills: [
+                        'JavaScript', 'React', 'Node.js', 'SQL', 'Git', 
+                        'Agile', 'Problem Solving', 'Communication', 'Team Leadership'
+                    ],
+                    missingSkills: [
+                        'Docker', 'Kubernetes', 'AWS', 'TypeScript', 'GraphQL'
+                    ],
+                    recommendations: [
+                        'Add more quantifiable achievements to your experience section',
+                        'Include Docker and Kubernetes in your skills section',
+                        'Optimize your summary section with relevant keywords',
+                        'Consider adding a projects section to showcase technical abilities',
+                        'Use action verbs like "implemented", "designed", "optimized"'
+                    ]
+                };
+            }
+
+            updateDisplay() {
+                // Update job role
+                document.getElementById('jobRoleDisplay').textContent = this.analysisData.jobRole;
+                
+                // Update file name
+                document.getElementById('fileName').textContent = this.analysisData.fileName;
+                
+                // Update scores
+                document.getElementById('overallScore').textContent = this.analysisData.scores.overall;
+                document.getElementById('skillsScore').textContent = this.analysisData.scores.skills + '%';
+                document.getElementById('experienceScore').textContent = this.analysisData.scores.experience + '%';
+                document.getElementById('educationScore').textContent = this.analysisData.scores.education + '%';
+                document.getElementById('keywordsScore').textContent = this.analysisData.scores.keywords + '%';
+                
+                // Update score label
+                const scoreLabel = document.getElementById('scoreLabel');
+                const overallScore = this.analysisData.scores.overall;
+                if (overallScore >= 80) {
+                    scoreLabel.textContent = 'Excellent Match';
+                    scoreLabel.className = 'text-xl font-semibold text-green-600 mb-2';
+                } else if (overallScore >= 60) {
+                    scoreLabel.textContent = 'Good Match';
+                    scoreLabel.className = 'text-xl font-semibold text-amber-600 mb-2';
+                } else {
+                    scoreLabel.textContent = 'Needs Improvement';
+                    scoreLabel.className = 'text-xl font-semibold text-red-600 mb-2';
+                }
+
+                // Update skills
+                this.updateSkills();
+                
+                // Update recommendations
+                this.updateRecommendations();
+            }
+
+            updateSkills() {
+                const matchedContainer = document.getElementById('matchedSkills');
+                const missingContainer = document.getElementById('missingSkills');
+
+                // Matched skills
+                matchedContainer.innerHTML = '';
+                this.analysisData.matchedSkills.forEach(skill => {
+                    const tag = document.createElement('span');
+                    tag.className = 'matched-skill px-3 py-1 rounded-full text-sm font-medium cursor-pointer';
+                    tag.textContent = skill;
+                    matchedContainer.appendChild(tag);
+                });
+
+                // Missing skills
+                missingContainer.innerHTML = '';
+                this.analysisData.missingSkills.forEach(skill => {
+                    const tag = document.createElement('span');
+                    tag.className = 'missing-skill px-3 py-1 rounded-full text-sm font-medium cursor-pointer';
+                    tag.textContent = skill;
+                    missingContainer.appendChild(tag);
+                });
+            }
+
+            updateRecommendations() {
+                const container = document.getElementById('recommendations');
+                container.innerHTML = '';
+
+                this.analysisData.recommendations.forEach((rec, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'recommendation-card p-4 rounded-lg';
+                    card.innerHTML = `
+                        <div class="flex items-start space-x-3">
+                            <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                ${index + 1}
+                            </div>
+                            <p class="text-gray-700 flex-1">${rec}</p>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            initializeCharts() {
+                this.createSkillsChart();
+            }
+
+            createSkillsChart() {
+                const chart = echarts.init(document.getElementById('skillsChart'));
+                
+                const option = {
+                    title: {
+                        text: 'Skills vs Job Requirements',
+                        left: 'center',
+                        textStyle: {
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    legend: {
+                        data: ['Your Skills', 'Job Requirements'],
+                        bottom: 10
+                    },
+                    radar: {
+                        indicator: [
+                            { name: 'Technical Skills', max: 100 },
+                            { name: 'Soft Skills', max: 100 },
+                            { name: 'Experience', max: 100 },
+                            { name: 'Education', max: 100 },
+                            { name: 'Certifications', max: 100 },
+                            { name: 'Industry Knowledge', max: 100 }
+                        ],
+                        radius: '60%'
+                    },
+                    series: [{
+                        name: 'Skills Analysis',
+                        type: 'radar',
+                        data: [
+                            {
+                                value: [85, 92, 88, 78, 65, 82],
+                                name: 'Your Skills',
+                                itemStyle: {
+                                    color: '#3b82f6'
+                                },
+                                areaStyle: {
+                                    color: 'rgba(59, 130, 246, 0.2)'
+                                }
+                            },
+                            {
+                                value: [90, 85, 95, 80, 70, 88],
+                                name: 'Job Requirements',
+                                itemStyle: {
+                                    color: '#10b981'
+                                },
+                                areaStyle: {
+                                    color: 'rgba(16, 185, 129, 0.2)'
+                                }
+                            }
+                        ]
+                    }]
+                };
+
+                chart.setOption(option);
+                
+                // Make chart responsive
+                window.addEventListener('resize', () => {
+                    chart.resize();
+                });
+            }
+
+            animateElements() {
+                // Animate score circle
+                const score = this.analysisData.scores.overall;
+                const circumference = 2 * Math.PI * 90;
+                const offset = circumference - (score / 100) * circumference;
+                
+                setTimeout(() => {
+                    document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+                }, 500);
+
+                // Animate progress bars
+                setTimeout(() => {
+                    document.getElementById('skillsBar').style.width = this.analysisData.scores.skills + '%';
+                    document.getElementById('experienceBar').style.width = this.analysisData.scores.experience + '%';
+                    document.getElementById('educationBar').style.width = this.analysisData.scores.education + '%';
+                    document.getElementById('keywordsBar').style.width = this.analysisData.scores.keywords + '%';
+                }, 1000);
+
+                // Animate cards
+                anime({
+                    targets: '.card-hover',
+                    translateY: [50, 0],
+                    opacity: [0, 1],
+                    delay: anime.stagger(200),
+                    duration: 800,
+                    easing: 'easeOutExpo'
+                });
+            }
+        }
+
+        // Global functions
+        function exportResults() {
+            // Simulate export functionality
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.textContent = 'Results exported successfully!';
+            document.body.appendChild(notification);
+
+            anime({
+                targets: notification,
+                translateX: [300, 0],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutExpo'
+            });
+
+            setTimeout(() => {
+                anime({
+                    targets: notification,
+                    translateX: [0, 300],
+                    opacity: [1, 0],
+                    duration: 300,
+                    easing: 'easeInExpo',
+                    complete: () => document.body.removeChild(notification)
+                });
+            }, 3000);
+        }
+
+        function optimizeResume() {
+            // Save current analysis to history
+            if (window.AnalyzerUtils) {
+                window.AnalyzerUtils.saveToHistory(window.resultsPage.analysisData);
+            }
+            
+            // Redirect to dashboard with optimization mode
+            window.location.href = 'index.html?optimize=true';
+        }
+
+        function analyzeAnother() {
+            window.location.href = 'index.html';
+        }
+
+        // Initialize results page
+        document.addEventListener('DOMContentLoaded', () => {
+            window.resultsPage = new ResultsPage();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer - Intelligent CV Analysis & Job Matching</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+    <script src="https://unpkg.com/splitting@1.0.6/dist/splitting.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/splitting@1.0.6/dist/splitting.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-slate: #1e293b;
+            --soft-white: #fefefe;
+            --accent-blue: #3b82f6;
+            --success-green: #10b981;
+            --warning-amber: #f59e0b;
+            --neutral-gray: #64748b;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: var(--deep-slate);
+        }
+        
+        .hero-bg {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-blue), var(--success-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--neutral-gray);
+            transition: all 0.3s ease;
+        }
+        
+        .upload-zone.dragover {
+            border-color: var(--accent-blue);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring-circle {
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 0.5s ease-in-out;
+        }
+        
+        .particle-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .skill-tag {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        .skill-tag:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2));
+            transform: scale(1.05);
+        }
+        
+        .analysis-step {
+            opacity: 0.5;
+            transition: all 0.5s ease;
+        }
+        
+        .analysis-step.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        
+        .analysis-step.completed {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold gradient-text">AI Resume Analyzer</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">Dashboard</a>
+                    <a href="results.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">Results</a>
+                    <a href="history.html" class="text-gray-700 hover:text-blue-600 font-medium transition-colors">History</a>
+                    <button class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all">
+                        Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg relative overflow-hidden py-20">
+        <canvas id="particleCanvas" class="particle-bg"></canvas>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8">
+                    <div class="space-y-4">
+                        <h1 class="text-5xl lg:text-6xl font-bold leading-tight">
+                            <span class="block" data-splitting>Intelligent</span>
+                            <span class="block gradient-text" data-splitting>Resume Analysis</span>
+                        </h1>
+                        <p class="text-xl text-gray-600 leading-relaxed max-w-lg">
+                            Leverage advanced AI to analyze, score, and optimize your resume for any job role. 
+                            Get instant insights and actionable recommendations.
+                        </p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button onclick="scrollToAnalyzer()" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-8 py-4 rounded-xl font-semibold hover:shadow-xl transition-all transform hover:scale-105">
+                            Start Analysis
+                        </button>
+                        <button class="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:border-blue-500 hover:text-blue-600 transition-all">
+                            View Demo
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <img src="resources/hero-dashboard.png" alt="AI Resume Analysis Dashboard" class="w-full h-auto rounded-2xl shadow-2xl">
+                    <div class="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white font-bold text-lg animate-pulse">
+                        AI
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Analyzer Section -->
+    <section id="analyzer" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Resume Analysis Dashboard</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Upload your resume and let our AI analyze it against your target job role. 
+                    Get comprehensive insights and actionable recommendations.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Upload Section -->
+                <div class="lg:col-span-2 space-y-8">
+                    <!-- File Upload -->
+                    <div class="card-hover bg-white rounded-2xl p-8 border border-gray-200">
+                        <h3 class="text-2xl font-bold mb-6 flex items-center">
+                            <svg class="w-6 h-6 mr-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            Upload Your Resume
+                        </h3>
+                        
+                        <div id="uploadZone" class="upload-zone rounded-xl p-12 text-center cursor-pointer">
+                            <div id="uploadContent">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <p class="text-lg font-medium text-gray-700 mb-2">Drop your PDF resume here</p>
+                                <p class="text-gray-500">or click to browse files</p>
+                                <input type="file" id="resumeFile" accept=".pdf" class="hidden">
+                            </div>
+                            <div id="filePreview" class="hidden">
+                                <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-lg font-medium text-gray-700 mb-2" id="fileName">resume.pdf</p>
+                                <p class="text-green-600 font-medium">✓ File uploaded successfully</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Job Role Selection -->
+                    <div class="card-hover bg-white rounded-2xl p-8 border border-gray-200">
+                        <h3 class="text-2xl font-bold mb-6 flex items-center">
+                            <svg class="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"></path>
+                            </svg>
+                            Target Job Role
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Job Title</label>
+                                <select id="jobRole" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Select a job role...</option>
+                                    <option value="software-engineer">Software Engineer</option>
+                                    <option value="data-scientist">Data Scientist</option>
+                                    <option value="product-manager">Product Manager</option>
+                                    <option value="ux-designer">UX Designer</option>
+                                    <option value="marketing-manager">Marketing Manager</option>
+                                    <option value="business-analyst">Business Analyst</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Job Description (Optional)</label>
+                                <textarea id="jobDescription" rows="4" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste the job description for more accurate matching..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Progress -->
+                    <div id="analysisProgress" class="card-hover bg-white rounded-2xl p-8 border border-gray-200 hidden">
+                        <h3 class="text-2xl font-bold mb-6">Analysis in Progress</h3>
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between">
+                                <div class="analysis-step active flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                                    <span class="font-medium">Uploading Resume</span>
+                                </div>
+                                <div class="w-6 h-6">
+                                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="analysis-step flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                                    <span class="font-medium">Extracting Text</span>
+                                </div>
+                                <div class="w-6 h-6"></div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="analysis-step flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+                                    <span class="font-medium">AI Analysis</span>
+                                </div>
+                                <div class="w-6 h-6"></div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="analysis-step flex items-center space-x-3">
+                                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white text-sm font-bold">4</div>
+                                    <span class="font-medium">Generating Results</span>
+                                </div>
+                                <div class="w-6 h-6"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-8">
+                    <!-- Quick Stats -->
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-bold mb-4">Quick Stats</h3>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Resumes Analyzed</span>
+                                <span class="font-bold text-blue-600" id="resumesCount">1,247</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Success Rate</span>
+                                <span class="font-bold text-green-600">89%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">Avg. Score Improvement</span>
+                                <span class="font-bold text-amber-600">+23%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sample Skills -->
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-bold mb-4">Popular Skills</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">JavaScript</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">Python</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">React</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">SQL</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">AWS</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">Docker</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">Kubernetes</span>
+                            <span class="skill-tag px-3 py-1 rounded-full text-sm font-medium cursor-pointer">Machine Learning</span>
+                        </div>
+                    </div>
+
+                    <!-- Recent Analyses -->
+                    <div class="card-hover bg-white rounded-2xl p-6 border border-gray-200">
+                        <h3 class="text-lg font-bold mb-4">Recent Analyses</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-sm">Software Engineer</p>
+                                    <p class="text-xs text-gray-500">2 min ago</p>
+                                </div>
+                                <div class="text-green-600 font-bold">87%</div>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-sm">Data Scientist</p>
+                                    <p class="text-xs text-gray-500">5 min ago</p>
+                                </div>
+                                <div class="text-amber-600 font-bold">72%</div>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="font-medium text-sm">Product Manager</p>
+                                    <p class="text-xs text-gray-500">8 min ago</p>
+                                </div>
+                                <div class="text-green-600 font-bold">91%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-12 text-center">
+                <button id="analyzeBtn" onclick="startAnalysis()" class="bg-gradient-to-r from-blue-500 to-green-500 text-white px-12 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Analyze Resume
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Why Choose AI Resume Analyzer?</h2>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                    Our advanced AI technology provides comprehensive resume analysis that goes beyond simple keyword matching.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="card-hover bg-white rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">AI-Powered Analysis</h3>
+                    <p class="text-gray-600">Advanced NLP and machine learning algorithms provide deep insights into your resume's effectiveness.</p>
+                </div>
+
+                <div class="card-hover bg-white rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Instant Results</h3>
+                    <p class="text-gray-600">Get comprehensive analysis and recommendations in seconds, not hours or days.</p>
+                </div>
+
+                <div class="card-hover bg-white rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Actionable Insights</h3>
+                    <p class="text-gray-600">Receive specific recommendations to improve your resume and increase interview chances.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold">AI Resume Analyzer</span>
+                </div>
+                <p class="text-gray-400 mb-4">Intelligent resume analysis powered by advanced AI technology</p>
+                <p class="text-sm text-gray-500">© 2024 AI Resume Analyzer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
